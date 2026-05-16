@@ -6,12 +6,14 @@ import {
   demoFarmCards,
   demoFarms,
   demoOrders,
+  demoProfiles,
   demoSubscriptions,
   getBoxWithFarm,
   getFarmBySlug,
 } from "@/lib/demo-data";
+import { isSlug, isUuid } from "@/lib/forms";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { Box, BoxWithFarm, FarmWithBox, Order, Profile, Subscription } from "@/lib/types";
+import type { Box, BoxItem, BoxWithFarm, Farm, FarmWithBox, Order, Profile, Subscription } from "@/lib/types";
 
 export async function listFarmCards(category?: string): Promise<FarmWithBox[]> {
   noStore();
@@ -26,7 +28,7 @@ export async function listFarmCards(category?: string): Promise<FarmWithBox[]> {
     .eq("active", true)
     .order("name");
 
-  if (!farms?.length) return demoFarmCards;
+  if (!farms?.length) return [];
 
   const farmIds = farms.map((farm) => farm.id);
   const { data: boxes } = await supabase.from("boxes").select("*").in("farm_id", farmIds).eq("active", true);
@@ -35,20 +37,27 @@ export async function listFarmCards(category?: string): Promise<FarmWithBox[]> {
   return farms
     .filter((farm) => !category || farm.category === category)
     .map((farm) => {
-      const featuredBox = (boxes as Box[] | null)?.find((box) => box.farm_id === farm.id) ?? demoBoxes[0];
+      const featuredBox = (boxes as Box[] | null)?.find((box) => box.farm_id === farm.id);
+      if (!featuredBox) return null;
       return {
         ...farm,
         category: farm.category ?? "mixed",
         featuredBox,
         items: (items ?? []).filter((item) => item.box_id === featuredBox.id),
       } as FarmWithBox;
-    });
+    })
+    .filter((farm): farm is FarmWithBox => Boolean(farm));
 }
 
 export async function getFeaturedBox(): Promise<BoxWithFarm> {
   noStore();
   const cards = await listFarmCards();
   const featured = cards[1] ?? cards[0];
+  if (!featured) {
+    const fallback = getBoxWithFarm(demoBoxes[0].id);
+    if (!fallback) throw new Error("No featured farm box is available.");
+    return fallback;
+  }
   return {
     ...featured.featuredBox,
     farm: featured,
@@ -62,15 +71,16 @@ export async function getFarmDetail(slug: string): Promise<FarmWithBox | null> {
   if (!supabase) return getFarmBySlug(slug);
 
   const { data: farm } = await supabase.from("farms").select("*").eq("slug", slug).eq("active", true).single();
-  if (!farm) return getFarmBySlug(slug);
+  if (!farm) return null;
 
   const { data: box } = await supabase.from("boxes").select("*").eq("farm_id", farm.id).eq("active", true).single();
+  if (!box) return null;
   const { data: items } = await supabase.from("box_items").select("*").eq("box_id", box?.id).order("sort_order");
 
   return {
     ...farm,
     category: farm.category ?? "mixed",
-    featuredBox: (box as Box | null) ?? demoBoxes[0],
+    featuredBox: box as Box,
     items: (items ?? []) as FarmWithBox["items"],
   } as FarmWithBox;
 }
@@ -79,15 +89,14 @@ export async function getBoxDetail(idOrSlug: string): Promise<BoxWithFarm | null
   noStore();
   const supabase = await createSupabaseServerClient();
   if (!supabase) return getBoxWithFarm(idOrSlug);
+  if (!isUuid(idOrSlug) && !isSlug(idOrSlug)) return null;
 
-  const { data: box } = await supabase
-    .from("boxes")
-    .select("*, farms(*)")
-    .or(`id.eq.${idOrSlug},slug.eq.${idOrSlug}`)
-    .eq("active", true)
-    .single();
+  const query = supabase.from("boxes").select("*, farms(*)").eq("active", true);
+  const { data: box } = isUuid(idOrSlug)
+    ? await query.eq("id", idOrSlug).single()
+    : await query.eq("slug", idOrSlug).single();
 
-  if (!box) return getBoxWithFarm(idOrSlug);
+  if (!box) return null;
   const { data: items } = await supabase.from("box_items").select("*").eq("box_id", box.id).order("sort_order");
 
   const farm = Array.isArray(box.farms) ? box.farms[0] : box.farms;
@@ -121,11 +130,27 @@ export async function getCustomerData(profile: Profile) {
     .eq("user_id", profile.id)
     .order("delivery_date", { ascending: false });
 
+  const boxIds = new Set<string>();
+  const farmIds = new Set<string>();
+  for (const subscription of subscriptions ?? []) {
+    boxIds.add(subscription.box_id);
+    farmIds.add(subscription.farm_id);
+  }
+  for (const order of orders ?? []) {
+    boxIds.add(order.box_id);
+    farmIds.add(order.farm_id);
+  }
+
+  const [boxes, farms] = await Promise.all([
+    boxIds.size ? supabase.from("boxes").select("*").in("id", Array.from(boxIds)) : Promise.resolve({ data: [] }),
+    farmIds.size ? supabase.from("farms").select("*").in("id", Array.from(farmIds)) : Promise.resolve({ data: [] }),
+  ]);
+
   return {
     subscriptions: (subscriptions ?? []) as Subscription[],
     orders: (orders ?? []) as Order[],
-    boxes: demoBoxes,
-    farms: demoFarms,
+    boxes: (boxes.data ?? []) as Box[],
+    farms: (farms.data ?? []) as Farm[],
   };
 }
 
@@ -144,6 +169,10 @@ export async function getFarmerData(profile: Profile) {
 
   const { data: farms } = await supabase.from("farms").select("*").eq("owner_id", profile.id).order("name");
   const farmIds = farms?.map((farm) => farm.id) ?? [];
+  if (!farmIds.length) {
+    return { farms: [], boxes: [], items: [], subscriptions: [], orders: [] };
+  }
+
   const { data: boxes } = await supabase.from("boxes").select("*").in("farm_id", farmIds);
   const { data: orders } = await supabase.from("orders").select("*").in("farm_id", farmIds).order("delivery_date");
   const { data: subscriptions } = await supabase.from("subscriptions").select("*").in("farm_id", farmIds);
@@ -157,28 +186,33 @@ export async function getAdminData() {
   const supabase = await createSupabaseServerClient();
   if (!supabase) {
     return {
+      profiles: demoProfiles,
       farms: demoFarms,
       boxes: demoBoxes,
+      items: demoBoxItems,
       subscriptions: demoSubscriptions,
       orders: demoOrders,
       deliveryRuns: demoDeliveryRuns,
     };
   }
 
-  const [farms, boxes, subscriptions, orders, deliveryRuns] = await Promise.all([
+  const [profiles, farms, boxes, boxItems, subscriptions, orders, deliveryRuns] = await Promise.all([
+    supabase.from("profiles").select("*").order("created_at", { ascending: false }),
     supabase.from("farms").select("*").order("name"),
     supabase.from("boxes").select("*").order("title"),
+    supabase.from("box_items").select("*").order("sort_order"),
     supabase.from("subscriptions").select("*").order("created_at", { ascending: false }),
     supabase.from("orders").select("*").order("delivery_date"),
     supabase.from("delivery_runs").select("*").order("delivery_date"),
   ]);
 
   return {
+    profiles: (profiles.data ?? []) as Profile[],
     farms: farms.data ?? [],
     boxes: boxes.data ?? [],
+    items: (boxItems.data ?? []) as BoxItem[],
     subscriptions: subscriptions.data ?? [],
     orders: orders.data ?? [],
     deliveryRuns: deliveryRuns.data ?? [],
   };
 }
-

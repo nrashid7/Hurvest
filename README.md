@@ -6,7 +6,7 @@ Hurvest is a production-ready MVP for a Minnesota-first farm box subscription pl
 
 - Next.js App Router, TypeScript, Tailwind CSS, shadcn/ui
 - Supabase Auth, Postgres, RLS
-- Stripe Checkout subscriptions and webhook sync
+- Stripe Checkout subscriptions and webhook sync scaffold
 - Vercel-ready deployment
 
 ## Local Setup
@@ -38,13 +38,13 @@ Never expose `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, or `STRIPE_WEBHOO
 
 1. Create a Supabase project.
 2. Copy `.env.example` to `.env.local` and fill in the Supabase URL and keys.
-3. Apply the migration in `supabase/migrations/20260516000000_hurvest_mvp.sql`.
-4. Create users in Supabase Auth.
-5. Insert or update matching rows in `profiles`:
+3. Apply every migration in `supabase/migrations` in timestamp order.
+4. Create users in Supabase Auth. New auth users automatically receive a customer profile.
+5. Promote demo operators from `/admin` or by updating matching rows in `profiles`:
    - `customer@hurvest.local` with role `customer`
    - `farmer@hurvest.local` with role `farmer`
    - `admin@hurvest.local` with role `admin`
-6. Assign a farm owner by setting `farms.owner_id` to the farmer profile id.
+6. Assign a farm owner from `/admin` after the farmer profile exists.
 
 The migration enables RLS for all public tables. Customers can manage their own profile and read their own orders/subscriptions. Farmers can manage their assigned farm and boxes. Admins can operate the system. RLS helper functions live in the private schema, outside the exposed public API surface.
 
@@ -80,6 +80,7 @@ Checkout uses Stripe subscription mode with `user_id`, `box_id`, and `farm_id` m
 
 ```bash
 npm run lint
+npm run test
 npm run typecheck
 npm run build
 ```

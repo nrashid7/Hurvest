@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { parseBooleanSwitch, parseBoxItems } from "@/lib/forms";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function updateFarmAction(formData: FormData) {
@@ -18,19 +19,27 @@ export async function updateFarmAction(formData: FormData) {
       short_description: String(formData.get("short_description") ?? ""),
       story: String(formData.get("story") ?? ""),
       location: String(formData.get("location") ?? ""),
-      active: formData.get("active") === "on",
+      active: parseBooleanSwitch(formData.get("active")),
     })
     .eq("id", farmId)
-    .or(`owner_id.eq.${profile.id},owner_id.is.null`);
+    .eq("owner_id", profile.id);
 
   revalidatePath("/farmer");
 }
 
 export async function updateBoxAction(formData: FormData) {
-  await requireRole(["farmer", "admin"]);
+  const profile = await requireRole(["farmer", "admin"]);
   const boxId = String(formData.get("box_id") ?? "");
   const supabase = await createSupabaseServerClient();
   if (!supabase) redirect("/farmer?demo=1");
+
+  const { data: box } = await supabase.from("boxes").select("id, farm_id").eq("id", boxId).single();
+  if (!box) redirect("/farmer?error=box-not-found");
+
+  if (profile.role !== "admin") {
+    const { data: farm } = await supabase.from("farms").select("id").eq("id", box.farm_id).eq("owner_id", profile.id).single();
+    if (!farm) redirect("/farmer?error=not-authorized");
+  }
 
   await supabase
     .from("boxes")
@@ -39,27 +48,23 @@ export async function updateBoxAction(formData: FormData) {
       description: String(formData.get("description") ?? ""),
       farmer_message: String(formData.get("farmer_message") ?? ""),
       price_cents: Number(formData.get("price_cents") ?? 0),
-      active: formData.get("active") === "on",
+      active: parseBooleanSwitch(formData.get("active")),
     })
     .eq("id", boxId);
 
-  const rawItems = String(formData.get("items") ?? "");
-  const items = rawItems
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+  const items = parseBoxItems(formData.get("items"));
 
+  await supabase.from("box_items").delete().eq("box_id", boxId);
   if (items.length) {
-    await supabase.from("box_items").delete().eq("box_id", boxId);
     await supabase.from("box_items").insert(
-      items.map((name, index) => ({
+      items.map((item) => ({
         box_id: boxId,
-        name,
-        sort_order: index + 1,
+        name: item.name,
+        quantity: item.quantity,
+        sort_order: item.sort_order,
       })),
     );
   }
 
   revalidatePath("/farmer");
 }
-

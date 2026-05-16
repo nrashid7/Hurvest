@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/auth";
+import { asSubscriptionStatus } from "@/lib/forms";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function updateProfileAction(formData: FormData) {
@@ -34,9 +35,10 @@ export async function setSubscriptionStatusAction(formData: FormData) {
   if (!profile) redirect("/login");
 
   const subscriptionId = String(formData.get("subscription_id") ?? "");
-  const status = String(formData.get("status") ?? "paused");
+  const status = asSubscriptionStatus(formData.get("status"));
   const supabase = await createSupabaseServerClient();
 
+  if (!status || !["paused", "canceled"].includes(status)) redirect("/account?error=invalid-status");
   if (!supabase) redirect("/account?demo=1");
 
   await supabase
@@ -47,4 +49,3 @@ export async function setSubscriptionStatusAction(formData: FormData) {
 
   revalidatePath("/account");
 }
-

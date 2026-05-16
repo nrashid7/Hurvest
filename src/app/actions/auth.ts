@@ -2,11 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { sanitizeNextPath } from "@/lib/forms";
 
 export async function signInAction(formData: FormData) {
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
-  const next = String(formData.get("next") ?? "/account");
+  const next = sanitizeNextPath(formData.get("next"));
   const supabase = await createSupabaseServerClient();
 
   if (!supabase) redirect(`${next}?demo=1`);
@@ -53,4 +54,3 @@ export async function signOutAction() {
   if (supabase) await supabase.auth.signOut();
   redirect("/");
 }
-

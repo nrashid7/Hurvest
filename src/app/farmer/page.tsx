@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { requireRole } from "@/lib/auth";
 import { getFarmerData } from "@/lib/data";
 import { formatDate, formatMoney } from "@/lib/format";
+import { serializeBoxItems } from "@/lib/forms";
 
 export const metadata: Metadata = {
   title: "Farmer dashboard",
@@ -93,7 +94,7 @@ export default async function FarmerPage() {
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="items">Weekly included items</Label>
-                      <Textarea id="items" name="items" rows={6} defaultValue={boxItems.map((item) => item.quantity ? `${item.quantity} ${item.name}` : item.name).join("\n")} />
+                      <Textarea id="items" name="items" rows={6} defaultValue={serializeBoxItems(boxItems)} placeholder="1 bunch | Radishes" />
                     </div>
                     <label className="flex items-center justify-between rounded-lg border p-3">
                       <span className="font-medium">Box available</span>
@@ -142,4 +143,3 @@ export default async function FarmerPage() {
     </PageShell>
   );
 }
-
