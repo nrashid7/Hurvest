@@ -2,8 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { absoluteUrl, nextDeliveryDate } from "@/lib/format";
-import { getBoxDetail } from "@/lib/data";
+import { getBoxDetail, listBoxSubscriptions } from "@/lib/data";
 import { getCurrentProfile } from "@/lib/auth";
+import { getBoxCapacityStatus, getStripeRecurringForFrequency, hasCompleteDeliveryProfile, isSupportedDeliveryZip } from "@/lib/launch";
 import { getStripe } from "@/lib/stripe";
 
 export async function createCheckoutSession(formData: FormData) {
@@ -13,6 +14,15 @@ export async function createCheckoutSession(formData: FormData) {
 
   if (!box) redirect("/farms?error=box-not-found");
   if (!profile) redirect(`/login?next=${encodeURIComponent(`/boxes/${boxId}`)}`);
+  if (!hasCompleteDeliveryProfile(profile)) {
+    redirect(`/account?profile=required&next=${encodeURIComponent(`/boxes/${boxId}`)}`);
+  }
+  if (!isSupportedDeliveryZip(profile.zip)) {
+    redirect(`/account?profile=unsupported-zip&next=${encodeURIComponent(`/boxes/${boxId}`)}`);
+  }
+
+  const capacity = getBoxCapacityStatus(box, await listBoxSubscriptions(box.id));
+  if (capacity.state === "sold-out") redirect(`/boxes/${boxId}?checkout=sold-out`);
 
   const stripe = getStripe();
   if (!stripe) redirect(`/boxes/${boxId}?checkout=missing-stripe`);
@@ -27,10 +37,7 @@ export async function createCheckoutSession(formData: FormData) {
         price_data: {
           currency: box.currency,
           unit_amount: box.price_cents,
-          recurring: {
-            interval: "week",
-            interval_count: box.frequency === "biweekly" ? 2 : 1,
-          },
+          recurring: getStripeRecurringForFrequency(box.frequency),
           product_data: {
             name: `${box.title} from ${box.farm.name}`,
             description: box.description,
@@ -45,6 +52,7 @@ export async function createCheckoutSession(formData: FormData) {
         user_id: profile.id,
         box_id: box.id,
         farm_id: box.farm_id,
+        frequency: box.frequency,
         next_delivery_date: nextDeliveryDate().toISOString().slice(0, 10),
       },
     },
@@ -52,9 +60,9 @@ export async function createCheckoutSession(formData: FormData) {
       user_id: profile.id,
       box_id: box.id,
       farm_id: box.farm_id,
+      frequency: box.frequency,
     },
   });
 
   redirect(session.url ?? `/boxes/${boxId}?checkout=failed`);
 }
-

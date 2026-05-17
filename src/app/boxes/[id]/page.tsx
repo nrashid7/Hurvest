@@ -7,8 +7,9 @@ import { PageShell } from "@/components/page-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getBoxDetail } from "@/lib/data";
-import { formatMoney } from "@/lib/format";
+import { getBoxDetail, listBoxSubscriptions } from "@/lib/data";
+import { formatDate, formatMoney, nextDeliveryDate } from "@/lib/format";
+import { getBoxCapacityStatus, getDeliveryServiceAreaLabel, getSupportEmail } from "@/lib/launch";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -26,6 +27,9 @@ export default async function BoxPage({
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const box = await getBoxDetail(id);
   if (!box) notFound();
+  const capacity = getBoxCapacityStatus(box, await listBoxSubscriptions(box.id));
+  const isSoldOut = capacity.state === "sold-out";
+  const supportEmail = getSupportEmail();
 
   return (
     <PageShell>
@@ -66,10 +70,22 @@ export default async function BoxPage({
               Stripe credentials are not configured yet. Add `STRIPE_SECRET_KEY` and `NEXT_PUBLIC_APP_URL` to enable live checkout.
             </p>
           ) : null}
+          {query.checkout === "sold-out" ? (
+            <p className="mt-4 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
+              This box is sold out for the current launch cohort. Choose another farm box or check back after capacity opens.
+            </p>
+          ) : null}
+          <div className="mt-4 rounded-lg border bg-secondary/35 p-4 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">Next delivery: {formatDate(nextDeliveryDate())}</p>
+            <p className="mt-1">Orders close Wednesday night. You can pause or cancel from your account after subscribing.</p>
+            <p className="mt-1">{capacity.label}</p>
+            <p className="mt-1">{getDeliveryServiceAreaLabel()}</p>
+            <p className="mt-1">Need help? <a className="font-medium text-primary" href={`mailto:${supportEmail}`}>{supportEmail}</a></p>
+          </div>
           <form action={createCheckoutSession} className="mt-6">
             <input type="hidden" name="box_id" value={box.id} />
-            <Button type="submit" size="lg" className="w-full sm:w-auto">
-              Subscribe for {formatMoney(box.price_cents)} weekly
+            <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={isSoldOut}>
+              {isSoldOut ? "Sold out" : `Subscribe for ${formatMoney(box.price_cents)} weekly`}
             </Button>
           </form>
         </div>
@@ -101,4 +117,3 @@ export default async function BoxPage({
     </PageShell>
   );
 }
-

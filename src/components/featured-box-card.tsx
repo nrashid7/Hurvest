@@ -9,6 +9,8 @@ import { formatMoney } from "@/lib/format";
 import type { BoxWithFarm } from "@/lib/types";
 
 export function FeaturedBoxCard({ box, priority = false }: { box: BoxWithFarm; priority?: boolean }) {
+  const isSoldOut = box.capacity?.state === "sold-out";
+
   return (
     <Card className="grid overflow-hidden border-primary/15 bg-card shadow-xl shadow-primary/5 md:grid-cols-[1.05fr_0.95fr]">
       <div className="relative min-h-[320px]">
@@ -20,6 +22,11 @@ export function FeaturedBoxCard({ box, priority = false }: { box: BoxWithFarm; p
           <h3 className="text-4xl font-bold tracking-normal text-foreground">{box.title}</h3>
           <p className="mt-2 text-lg text-muted-foreground">by {box.farm.name}</p>
           <p className="mt-5 text-base leading-7 text-muted-foreground">{box.description}</p>
+          {box.capacity ? (
+            <p className="mt-4 w-fit rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+              {box.capacity.label}
+            </p>
+          ) : null}
           <div className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
             <div className="flex items-center gap-2">
               <CalendarDays className="size-5 text-primary" aria-hidden="true" />
@@ -46,8 +53,8 @@ export function FeaturedBoxCard({ box, priority = false }: { box: BoxWithFarm; p
           </div>
           <form action={createCheckoutSession}>
             <input type="hidden" name="box_id" value={box.id} />
-            <Button type="submit" size="lg" className="w-full sm:w-auto">
-              Subscribe
+            <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={isSoldOut}>
+              {isSoldOut ? "Sold out" : "Subscribe"}
             </Button>
           </form>
           <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
@@ -58,4 +65,3 @@ export function FeaturedBoxCard({ box, priority = false }: { box: BoxWithFarm; p
     </Card>
   );
 }
-

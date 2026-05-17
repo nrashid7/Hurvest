@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { sanitizeNextPath } from "@/lib/forms";
+import { asSignupRole, sanitizeNextPath } from "@/lib/forms";
 
 export async function signInAction(formData: FormData) {
   const email = String(formData.get("email") ?? "");
@@ -21,9 +21,10 @@ export async function signUpAction(formData: FormData) {
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
   const fullName = String(formData.get("full_name") ?? "");
+  const role = asSignupRole(formData.get("account_type")) ?? "customer";
   const supabase = await createSupabaseServerClient();
 
-  if (!supabase) redirect("/account?demo=1");
+  if (!supabase) redirect(role === "farmer" ? "/farmer?demo=1" : "/account?demo=1");
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -31,6 +32,7 @@ export async function signUpAction(formData: FormData) {
     options: {
       data: {
         full_name: fullName,
+        signup_role: role,
       },
     },
   });
@@ -42,11 +44,11 @@ export async function signUpAction(formData: FormData) {
       id: data.user.id,
       email,
       full_name: fullName,
-      role: "customer",
+      role,
     });
   }
 
-  redirect("/account");
+  redirect(role === "farmer" ? "/farmer/onboarding" : "/account");
 }
 
 export async function signOutAction() {

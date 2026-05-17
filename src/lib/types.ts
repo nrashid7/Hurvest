@@ -67,6 +67,12 @@ export type Box = {
   image_url: string;
   active: boolean;
   max_subscribers: number | null;
+  capacity?: {
+    activeCount: number;
+    remaining: number | null;
+    state: "available" | "almost-full" | "sold-out";
+    label: string;
+  };
   created_at: string;
   updated_at: string;
 };
@@ -128,4 +134,3 @@ export type BoxWithFarm = Box & {
   farm: Farm;
   items: BoxItem[];
 };
-

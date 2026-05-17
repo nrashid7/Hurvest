@@ -3,6 +3,7 @@ import {
   assignFarmOwnerAction,
   createAdminBoxAction,
   createAdminFarmAction,
+  generateWeeklyOrdersAction,
   updateAdminBoxAction,
   updateAdminFarmAction,
   updateAdminSubscriptionStatusAction,
@@ -25,6 +26,7 @@ import { requireRole } from "@/lib/auth";
 import { getAdminData } from "@/lib/data";
 import { formatDate, formatMoney } from "@/lib/format";
 import { farmCategories, frequencies, orderStatuses, serializeBoxItems, subscriptionStatuses, userRoles } from "@/lib/forms";
+import { sortOrdersForOperations } from "@/lib/launch";
 
 export const metadata: Metadata = {
   title: "Admin operations",
@@ -36,6 +38,7 @@ export default async function AdminPage() {
   const farmers = profiles.filter((profile) => profile.role === "farmer" || profile.role === "admin");
   const activeSubscriptions = subscriptions.filter((subscription) => subscription.status === "active");
   const nextOrders = orders.filter((order) => order.status !== "delivered" && order.status !== "cancelled");
+  const sortedOrders = sortOrdersForOperations(orders);
   const revenue = activeSubscriptions.reduce((sum, subscription) => sum + subscription.price_cents, 0);
 
   return (
@@ -84,22 +87,29 @@ export default async function AdminPage() {
               <CardContent className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Delivery</TableHead>
-                      <TableHead>Farm</TableHead>
-                      <TableHead>Box</TableHead>
-                      <TableHead>Total</TableHead>
+                      <TableRow>
+                        <TableHead>Delivery</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Farm</TableHead>
+                        <TableHead>Box</TableHead>
+                        <TableHead>Total</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="min-w-52">Update</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orders.length ? orders.map((order) => {
+                    {sortedOrders.length ? sortedOrders.map((order) => {
+                      const profile = profiles.find((item) => item.id === order.user_id);
                       const farm = farms.find((item) => item.id === order.farm_id);
                       const box = boxes.find((item) => item.id === order.box_id);
                       return (
                         <TableRow key={order.id}>
                           <TableCell>{formatDate(order.delivery_date)}</TableCell>
+                          <TableCell>
+                            <p className="font-medium">{profile?.full_name ?? profile?.email ?? "Customer"}</p>
+                            <p className="text-xs text-muted-foreground">{profile?.email ?? "No email"}</p>
+                            <p className="text-xs text-muted-foreground">{profile?.phone ?? "No phone"}</p>
+                          </TableCell>
                           <TableCell>{farm?.name ?? "Farm"}</TableCell>
                           <TableCell>{box?.title ?? "Box"}</TableCell>
                           <TableCell>{formatMoney(order.total_cents)}</TableCell>
@@ -124,7 +134,7 @@ export default async function AdminPage() {
                       );
                     }) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">No orders have been created yet.</TableCell>
+                        <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">No orders have been created yet.</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -137,6 +147,17 @@ export default async function AdminPage() {
                 <CardTitle className="text-3xl">Delivery coordination</CardTitle>
               </CardHeader>
               <CardContent className="grid gap-4">
+                <form action={generateWeeklyOrdersAction} className="grid gap-3 rounded-xl border bg-secondary/30 p-4">
+                  <div>
+                    <p className="font-medium">Generate due orders</p>
+                    <p className="text-sm text-muted-foreground">Creates missing orders for active subscriptions due on or before the selected delivery date.</p>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="delivery_date">Delivery date</Label>
+                    <Input id="delivery_date" name="delivery_date" type="date" defaultValue={deliveryRuns[0]?.delivery_date} required />
+                  </div>
+                  <Button type="submit" variant="outline">Generate orders</Button>
+                </form>
                 {deliveryRuns.length ? deliveryRuns.map((run) => (
                   <form key={run.id} action={updateDeliveryRunAction} className="grid gap-4 rounded-xl border p-4">
                     <input type="hidden" name="delivery_run_id" value={run.id} />

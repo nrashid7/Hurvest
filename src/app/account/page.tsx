@@ -11,12 +11,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { getCurrentProfile } from "@/lib/auth";
 import { getCustomerData } from "@/lib/data";
 import { formatDate, formatMoney } from "@/lib/format";
+import { sanitizeNextPath } from "@/lib/forms";
+import { getDeliveryServiceAreaLabel, getSupportEmail } from "@/lib/launch";
 
 export const metadata: Metadata = {
   title: "Account",
 };
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string; profile?: string; next?: string }>;
+}) {
+  const query = await searchParams;
+  const nextPath = query.next ? sanitizeNextPath(query.next, "/farms") : null;
+  const supportEmail = getSupportEmail();
   const profile = await getCurrentProfile();
   if (!profile) {
     return (
@@ -41,6 +50,32 @@ export default async function AccountPage() {
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary">Customer dashboard</p>
           <h1 className="mt-3 text-5xl font-bold tracking-normal">Your Friday deliveries</h1>
         </div>
+        {query.checkout === "success" ? (
+          <div className="mb-6 rounded-xl border border-primary/20 bg-primary/10 p-4 text-sm">
+            Your subscription is confirmed. Your first Friday delivery will appear below after Stripe finishes syncing. Questions? Email{" "}
+            <a className="font-medium text-primary" href={`mailto:${supportEmail}`}>{supportEmail}</a>.
+          </div>
+        ) : null}
+        {query.profile === "required" ? (
+          <div className="mb-6 rounded-xl border bg-accent/45 p-4 text-sm">
+            Add your delivery profile before subscribing so we know where to bring your Friday box.
+            {nextPath ? (
+              <Button asChild variant="link" className="ml-1 h-auto p-0">
+                <Link href={nextPath}>Return to box</Link>
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+        {query.profile === "unsupported-zip" ? (
+          <div className="mb-6 rounded-xl border bg-accent/45 p-4 text-sm">
+            Your ZIP is outside the current paid beta delivery area. {getDeliveryServiceAreaLabel()}
+            {nextPath ? (
+              <Button asChild variant="link" className="ml-1 h-auto p-0">
+                <Link href={nextPath}>Return to box</Link>
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
           <div className="grid gap-6">
             <Card>
@@ -112,6 +147,7 @@ export default async function AccountPage() {
               <CardTitle className="text-3xl">Delivery profile</CardTitle>
             </CardHeader>
             <CardContent>
+              <p className="mb-4 text-sm text-muted-foreground">{getDeliveryServiceAreaLabel()}</p>
               <form action={updateProfileAction} className="grid gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="full_name">Full name</Label>
@@ -150,4 +186,3 @@ export default async function AccountPage() {
     </PageShell>
   );
 }
-

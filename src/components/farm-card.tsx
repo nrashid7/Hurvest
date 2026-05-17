@@ -28,6 +28,9 @@ export function FarmCard({ farm }: { farm: FarmWithBox }) {
           <p className="mt-1 text-sm text-muted-foreground">
             {formatMoney(farm.featuredBox.price_cents)} weekly · Friday delivery
           </p>
+          {farm.featuredBox.capacity ? (
+            <p className="mt-2 text-xs font-medium text-primary">{farm.featuredBox.capacity.label}</p>
+          ) : null}
         </div>
         <Button asChild className="w-full">
           <Link href={`/farms/${farm.slug}`}>
@@ -39,4 +42,3 @@ export function FarmCard({ farm }: { farm: FarmWithBox }) {
     </Card>
   );
 }
-

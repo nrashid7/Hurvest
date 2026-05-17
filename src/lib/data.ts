@@ -11,7 +11,9 @@ import {
   getBoxWithFarm,
   getFarmBySlug,
 } from "@/lib/demo-data";
+import { isDemoModeAllowed } from "@/lib/env";
 import { isSlug, isUuid } from "@/lib/forms";
+import { getBoxCapacityStatus } from "@/lib/launch";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Box, BoxItem, BoxWithFarm, Farm, FarmWithBox, Order, Profile, Subscription } from "@/lib/types";
 
@@ -19,6 +21,7 @@ export async function listFarmCards(category?: string): Promise<FarmWithBox[]> {
   noStore();
   const supabase = await createSupabaseServerClient();
   if (!supabase) {
+    if (!isDemoModeAllowed()) return [];
     return category ? demoFarmCards.filter((farm) => farm.category === category) : demoFarmCards;
   }
 
@@ -33,6 +36,10 @@ export async function listFarmCards(category?: string): Promise<FarmWithBox[]> {
   const farmIds = farms.map((farm) => farm.id);
   const { data: boxes } = await supabase.from("boxes").select("*").in("farm_id", farmIds).eq("active", true);
   const { data: items } = await supabase.from("box_items").select("*").order("sort_order");
+  const boxIds = ((boxes as Box[] | null) ?? []).map((box) => box.id);
+  const { data: subscriptions } = boxIds.length
+    ? await supabase.from("subscriptions").select("*").in("box_id", boxIds)
+    : { data: [] };
 
   return farms
     .filter((farm) => !category || farm.category === category)
@@ -42,7 +49,10 @@ export async function listFarmCards(category?: string): Promise<FarmWithBox[]> {
       return {
         ...farm,
         category: farm.category ?? "mixed",
-        featuredBox,
+        featuredBox: {
+          ...featuredBox,
+          capacity: getBoxCapacityStatus(featuredBox, (subscriptions ?? []) as Subscription[]),
+        },
         items: (items ?? []).filter((item) => item.box_id === featuredBox.id),
       } as FarmWithBox;
     })
@@ -54,6 +64,7 @@ export async function getFeaturedBox(): Promise<BoxWithFarm> {
   const cards = await listFarmCards();
   const featured = cards[1] ?? cards[0];
   if (!featured) {
+    if (!isDemoModeAllowed()) throw new Error("No featured farm box is available.");
     const fallback = getBoxWithFarm(demoBoxes[0].id);
     if (!fallback) throw new Error("No featured farm box is available.");
     return fallback;
@@ -68,7 +79,7 @@ export async function getFeaturedBox(): Promise<BoxWithFarm> {
 export async function getFarmDetail(slug: string): Promise<FarmWithBox | null> {
   noStore();
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return getFarmBySlug(slug);
+  if (!supabase) return isDemoModeAllowed() ? getFarmBySlug(slug) : null;
 
   const { data: farm } = await supabase.from("farms").select("*").eq("slug", slug).eq("active", true).single();
   if (!farm) return null;
@@ -76,11 +87,12 @@ export async function getFarmDetail(slug: string): Promise<FarmWithBox | null> {
   const { data: box } = await supabase.from("boxes").select("*").eq("farm_id", farm.id).eq("active", true).single();
   if (!box) return null;
   const { data: items } = await supabase.from("box_items").select("*").eq("box_id", box?.id).order("sort_order");
+  const { data: subscriptions } = await supabase.from("subscriptions").select("*").eq("box_id", box.id);
 
   return {
     ...farm,
     category: farm.category ?? "mixed",
-    featuredBox: box as Box,
+    featuredBox: { ...(box as Box), capacity: getBoxCapacityStatus(box as Box, (subscriptions ?? []) as Subscription[]) },
     items: (items ?? []) as FarmWithBox["items"],
   } as FarmWithBox;
 }
@@ -88,7 +100,7 @@ export async function getFarmDetail(slug: string): Promise<FarmWithBox | null> {
 export async function getBoxDetail(idOrSlug: string): Promise<BoxWithFarm | null> {
   noStore();
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return getBoxWithFarm(idOrSlug);
+  if (!supabase) return isDemoModeAllowed() ? getBoxWithFarm(idOrSlug) : null;
   if (!isUuid(idOrSlug) && !isSlug(idOrSlug)) return null;
 
   const query = supabase.from("boxes").select("*, farms(*)").eq("active", true);
@@ -98,19 +110,31 @@ export async function getBoxDetail(idOrSlug: string): Promise<BoxWithFarm | null
 
   if (!box) return null;
   const { data: items } = await supabase.from("box_items").select("*").eq("box_id", box.id).order("sort_order");
+  const { data: subscriptions } = await supabase.from("subscriptions").select("*").eq("box_id", box.id);
 
   const farm = Array.isArray(box.farms) ? box.farms[0] : box.farms;
   return {
     ...(box as Box),
     farm,
     items: items ?? [],
+    capacity: getBoxCapacityStatus(box as Box, (subscriptions ?? []) as Subscription[]),
   } as BoxWithFarm;
+}
+
+export async function listBoxSubscriptions(boxId: string): Promise<Subscription[]> {
+  noStore();
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return isDemoModeAllowed() ? demoSubscriptions.filter((subscription) => subscription.box_id === boxId) : [];
+
+  const { data } = await supabase.from("subscriptions").select("*").eq("box_id", boxId);
+  return (data ?? []) as Subscription[];
 }
 
 export async function getCustomerData(profile: Profile) {
   noStore();
   const supabase = await createSupabaseServerClient();
   if (!supabase) {
+    if (!isDemoModeAllowed()) return { subscriptions: [], orders: [], boxes: [], farms: [] };
     return {
       subscriptions: demoSubscriptions,
       orders: demoOrders,
@@ -158,6 +182,7 @@ export async function getFarmerData(profile: Profile) {
   noStore();
   const supabase = await createSupabaseServerClient();
   if (!supabase) {
+    if (!isDemoModeAllowed()) return { farms: [], boxes: [], items: [], subscriptions: [], orders: [] };
     return {
       farms: demoFarms,
       boxes: demoBoxes,
@@ -185,6 +210,9 @@ export async function getAdminData() {
   noStore();
   const supabase = await createSupabaseServerClient();
   if (!supabase) {
+    if (!isDemoModeAllowed()) {
+      return { profiles: [], farms: [], boxes: [], items: [], subscriptions: [], orders: [], deliveryRuns: [] };
+    }
     return {
       profiles: demoProfiles,
       farms: demoFarms,

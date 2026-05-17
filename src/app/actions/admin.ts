@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { asFarmCategory, asFrequency, asOrderStatus, asSubscriptionStatus, asUserRole, parseBooleanSwitch, parseBoxItems, parseOptionalInteger } from "@/lib/forms";
+import { buildWeeklyOrderPayloads, getNextSubscriptionDeliveryDate } from "@/lib/launch";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { Box, Order, Profile, Subscription } from "@/lib/types";
 
 export async function updateOrderStatusAction(formData: FormData) {
   await requireRole(["admin"]);
@@ -213,6 +215,57 @@ export async function updateDeliveryRunAction(formData: FormData) {
       notes: String(formData.get("notes") ?? ""),
     })
     .eq("id", runId);
+
+  revalidatePath("/admin");
+}
+
+export async function generateWeeklyOrdersAction(formData: FormData) {
+  await requireRole(["admin"]);
+  const deliveryDate = String(formData.get("delivery_date") ?? "").trim();
+  const supabase = await createSupabaseServerClient();
+
+  if (!deliveryDate) redirect("/admin?error=missing-delivery-date");
+  if (!supabase) redirect("/admin?demo=1");
+
+  const [{ data: subscriptions }, { data: profiles }, { data: boxes }, { data: existingOrders }] = await Promise.all([
+    supabase.from("subscriptions").select("*").lte("next_delivery_date", deliveryDate),
+    supabase.from("profiles").select("*"),
+    supabase.from("boxes").select("*"),
+    supabase.from("orders").select("subscription_id, delivery_date").eq("delivery_date", deliveryDate),
+  ]);
+
+  const orderPayloads = buildWeeklyOrderPayloads({
+    subscriptions: (subscriptions ?? []) as Subscription[],
+    profiles: (profiles ?? []) as Profile[],
+    boxes: (boxes ?? []) as Box[],
+    deliveryDate,
+    existingOrders: (existingOrders ?? []) as Pick<Order, "subscription_id" | "delivery_date">[],
+  });
+
+  if (orderPayloads.length) {
+    await supabase.from("orders").upsert(orderPayloads, {
+      onConflict: "subscription_id,delivery_date",
+      ignoreDuplicates: true,
+    });
+  }
+
+  const dueSubscriptions = ((subscriptions ?? []) as Subscription[]).filter((subscription) =>
+    orderPayloads.some((order) => order.subscription_id === subscription.id),
+  );
+
+  await Promise.all(
+    dueSubscriptions.map((subscription) =>
+      supabase
+        .from("subscriptions")
+        .update({ next_delivery_date: getNextSubscriptionDeliveryDate(deliveryDate, subscription.frequency) })
+        .eq("id", subscription.id),
+    ),
+  );
+
+  await supabase.from("delivery_runs").upsert(
+    { delivery_date: deliveryDate, status: "planning" },
+    { onConflict: "delivery_date", ignoreDuplicates: true },
+  );
 
   revalidatePath("/admin");
 }

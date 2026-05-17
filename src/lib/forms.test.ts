@@ -3,6 +3,7 @@ import {
   asOrderStatus,
   asFarmCategory,
   asFrequency,
+  asSignupRole,
   asSubscriptionStatus,
   asUserRole,
   isSlug,
@@ -10,6 +11,7 @@ import {
   parseBoxItems,
   sanitizeNextPath,
   serializeBoxItems,
+  slugify,
 } from "./forms";
 
 describe("form helpers", () => {
@@ -50,5 +52,18 @@ describe("form helpers", () => {
     expect(asFarmCategory("flowers")).toBeNull();
     expect(asFrequency("weekly")).toBe("weekly");
     expect(asFrequency("daily")).toBeNull();
+  });
+
+  it("only allows customer and farmer roles during signup", () => {
+    expect(asSignupRole("customer")).toBe("customer");
+    expect(asSignupRole("farmer")).toBe("farmer");
+    expect(asSignupRole("admin")).toBeNull();
+    expect(asSignupRole("owner")).toBeNull();
+  });
+
+  it("turns display names into safe slugs", () => {
+    expect(slugify("North Star Produce Co.")).toBe("north-star-produce-co");
+    expect(slugify("  Friday's Best Box!  ")).toBe("friday-s-best-box");
+    expect(slugify("")).toBe("");
   });
 });

@@ -53,6 +53,23 @@ export function SignUpForm({ error }: { error?: string }) {
             <Label htmlFor="password">Password</Label>
             <Input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required />
           </div>
+          <fieldset className="grid gap-3">
+            <legend className="text-sm font-medium">Account type</legend>
+            <label className="flex items-center gap-3 rounded-lg border p-3">
+              <input name="account_type" type="radio" value="customer" defaultChecked className="size-4 accent-primary" />
+              <span>
+                <span className="block font-medium">Customer</span>
+                <span className="block text-sm text-muted-foreground">Subscribe to local farm boxes.</span>
+              </span>
+            </label>
+            <label className="flex items-center gap-3 rounded-lg border p-3">
+              <input name="account_type" type="radio" value="farmer" className="size-4 accent-primary" />
+              <span>
+                <span className="block font-medium">Farmer</span>
+                <span className="block text-sm text-muted-foreground">Create a farm profile and sell boxes.</span>
+              </span>
+            </label>
+          </fieldset>
           {error ? <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p> : null}
           <Button type="submit" size="lg">Create account</Button>
         </form>
@@ -60,4 +77,3 @@ export function SignUpForm({ error }: { error?: string }) {
     </Card>
   );
 }
-

@@ -3,6 +3,7 @@ import type { BoxItem, OrderStatus, SubscriptionStatus, UserRole } from "@/lib/t
 export const orderStatuses: OrderStatus[] = ["pending", "confirmed", "packed", "out_for_delivery", "delivered", "cancelled"];
 export const subscriptionStatuses: SubscriptionStatus[] = ["active", "trialing", "past_due", "paused", "canceled", "incomplete"];
 export const userRoles: UserRole[] = ["customer", "farmer", "admin"];
+export const signupRoles = ["customer", "farmer"] as const;
 export const farmCategories = ["produce", "meat", "eggs", "mixed"] as const;
 export const frequencies = ["weekly", "biweekly", "monthly"] as const;
 
@@ -24,6 +25,14 @@ export function isUuid(value: string) {
 
 export function isSlug(value: string) {
   return slugPattern.test(value);
+}
+
+export function slugify(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 export function parseBooleanSwitch(value: FormDataEntryValue | null) {
@@ -74,6 +83,11 @@ export function asSubscriptionStatus(value: FormDataEntryValue | null) {
 export function asUserRole(value: FormDataEntryValue | null) {
   const role = String(value ?? "");
   return userRoles.includes(role as UserRole) ? (role as UserRole) : null;
+}
+
+export function asSignupRole(value: FormDataEntryValue | null) {
+  const role = String(value ?? "");
+  return signupRoles.includes(role as (typeof signupRoles)[number]) ? role : null;
 }
 
 export function asFarmCategory(value: FormDataEntryValue | null) {

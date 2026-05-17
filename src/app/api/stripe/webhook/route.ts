@@ -2,9 +2,12 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { env } from "@/lib/env";
+import { asFrequency } from "@/lib/forms";
 import { nextDeliveryDate } from "@/lib/format";
+import { buildInitialOrderPayload, getFrequencyFromStripeRecurring } from "@/lib/launch";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe";
+import type { Box, Profile } from "@/lib/types";
 
 export async function POST(request: Request) {
   const stripe = getStripe();
@@ -36,18 +39,64 @@ export async function POST(request: Request) {
     if (subscriptionId && session.metadata?.user_id && session.metadata.box_id && session.metadata.farm_id) {
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
       const item = subscription.items.data[0];
-
-      await supabase.from("subscriptions").upsert({
-        user_id: session.metadata.user_id,
-        box_id: session.metadata.box_id,
-        farm_id: session.metadata.farm_id,
-        stripe_customer_id: typeof session.customer === "string" ? session.customer : session.customer?.id,
-        stripe_subscription_id: subscription.id,
-        status: subscription.status,
-        frequency: "weekly",
-        price_cents: item?.price.unit_amount ?? 0,
-        next_delivery_date: nextDeliveryDate().toISOString().slice(0, 10),
+      const deliveryDate = nextDeliveryDate().toISOString().slice(0, 10);
+      const checkoutFrequency = asFrequency(session.metadata.frequency);
+      const stripeFrequency = getFrequencyFromStripeRecurring({
+        interval: item?.price.recurring?.interval,
+        intervalCount: item?.price.recurring?.interval_count,
       });
+      const frequency = checkoutFrequency ?? stripeFrequency;
+
+      const { data: subscriptionRow } = await supabase
+        .from("subscriptions")
+        .upsert(
+          {
+            user_id: session.metadata.user_id,
+            box_id: session.metadata.box_id,
+            farm_id: session.metadata.farm_id,
+            stripe_customer_id: typeof session.customer === "string" ? session.customer : session.customer?.id,
+            stripe_subscription_id: subscription.id,
+            status: subscription.status,
+            frequency,
+            price_cents: item?.price.unit_amount ?? 0,
+            next_delivery_date: deliveryDate,
+          },
+          { onConflict: "stripe_subscription_id" },
+        )
+        .select("id")
+        .single();
+
+      if (subscriptionRow?.id) {
+        const [{ data: profile }, { data: box }] = await Promise.all([
+          supabase.from("profiles").select("*").eq("id", session.metadata.user_id).single(),
+          supabase.from("boxes").select("*").eq("id", session.metadata.box_id).single(),
+        ]);
+
+        if (profile && box) {
+          const { data: existingOrder } = await supabase
+            .from("orders")
+            .select("id")
+            .eq("subscription_id", subscriptionRow.id)
+            .eq("delivery_date", deliveryDate)
+            .maybeSingle();
+
+          if (!existingOrder) {
+            await supabase.from("orders").upsert(
+              buildInitialOrderPayload({
+                subscriptionId: subscriptionRow.id,
+                profile: profile as Profile,
+                box: box as Box,
+                deliveryDate,
+              }),
+              { onConflict: "subscription_id,delivery_date", ignoreDuplicates: true },
+            );
+          }
+
+          await supabase
+            .from("delivery_runs")
+            .upsert({ delivery_date: deliveryDate, status: "planning" }, { onConflict: "delivery_date", ignoreDuplicates: true });
+        }
+      }
     }
   }
 
@@ -61,4 +110,3 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ received: true });
 }
-

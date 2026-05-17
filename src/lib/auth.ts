@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
 import { demoProfiles } from "@/lib/demo-data";
+import { isDemoModeAllowed } from "@/lib/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Profile, UserRole } from "@/lib/types";
 
 export async function getCurrentProfile(): Promise<Profile | null> {
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return demoProfiles[0];
+  if (!supabase) return isDemoModeAllowed() ? demoProfiles[0] : null;
 
   const {
     data: { user },
@@ -31,4 +32,3 @@ export function isAdmin(profile: Profile | null) {
 export function isFarmer(profile: Profile | null) {
   return profile?.role === "farmer" || profile?.role === "admin";
 }
-
