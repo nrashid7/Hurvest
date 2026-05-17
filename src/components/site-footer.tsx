@@ -14,7 +14,7 @@ export function SiteFooter() {
             Hurvest
           </div>
           <p className="max-w-md leading-6">
-            Curated Friday farm boxes from Minnesota farms. Built for simple subscriptions, farmer clarity, and manual operations that work on launch day.
+            Curated Friday farm boxes from Minnesota farms, built for simple subscriptions and dependable local delivery.
           </p>
         </div>
         <div className="grid gap-2">
@@ -26,8 +26,7 @@ export function SiteFooter() {
         </div>
         <div className="grid gap-2">
           <p className="font-medium text-foreground">Operations</p>
-          <Link href="/farmer">Farmer dashboard</Link>
-          <Link href="/admin">Admin control center</Link>
+          <Link href="/farmer">For farmers</Link>
         </div>
       </div>
     </footer>

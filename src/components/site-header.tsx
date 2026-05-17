@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Sprout } from "lucide-react";
 import { signOutAction } from "@/app/actions/auth";
-import { getCurrentProfile } from "@/lib/auth";
+import { getCurrentProfile, isAdmin } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 
 export async function SiteHeader() {
@@ -26,9 +26,11 @@ export async function SiteHeader() {
           <Link className="transition hover:text-foreground" href="/farmer">
             Farmers
           </Link>
-          <Link className="transition hover:text-foreground" href="/admin">
-            Admin
-          </Link>
+          {isAdmin(profile) ? (
+            <Link className="transition hover:text-foreground" href="/admin">
+              Admin
+            </Link>
+          ) : null}
         </nav>
         <div className="flex items-center gap-2">
           {profile ? (
@@ -57,4 +59,3 @@ export async function SiteHeader() {
     </header>
   );
 }
-

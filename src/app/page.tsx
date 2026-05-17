@@ -16,7 +16,7 @@ export default async function Home() {
       <section className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.05fr_0.95fr] md:py-20 lg:px-8">
         <div className="flex flex-col justify-center">
           <p className="mb-5 inline-flex w-fit rounded-full border border-primary/20 bg-card/80 px-4 py-2 text-sm font-medium text-primary">
-            Minnesota-first CSA subscriptions
+            Minnesota-first farm subscriptions
           </p>
           <h1 className="max-w-4xl text-balance text-5xl font-bold tracking-normal text-foreground sm:text-7xl">
             Curated farm boxes from local Minnesota farms.
@@ -27,12 +27,12 @@ export default async function Home() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
               <Link href="/farms">
-                Browse Farm Boxes
+                Browse farm boxes
                 <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href="/farms">Meet the Farms</Link>
+              <Link href="/farms">Meet the farms</Link>
             </Button>
           </div>
         </div>
@@ -48,7 +48,7 @@ export default async function Home() {
             </div>
             <div className="rounded-xl bg-secondary/70 p-4">
               <p className="text-2xl font-semibold">1</p>
-              <p className="text-muted-foreground">farm</p>
+              <p className="text-muted-foreground">per box</p>
             </div>
           </div>
           <FeaturedBoxCard box={featuredBox} priority />
@@ -57,7 +57,7 @@ export default async function Home() {
 
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <SectionHeading eyebrow="Featured box" title="One beautiful weekly decision.">
-          <p>Hurvest is built around curated boxes because subscription conversion matters more than endless browsing.</p>
+          <p>Each box is curated by one local farm, so you can eat seasonally without sorting through a crowded cart.</p>
         </SectionHeading>
         <div className="mt-8">
           <FeaturedBoxCard box={featuredBox} />
@@ -71,7 +71,7 @@ export default async function Home() {
             {([
               ["Choose a farm box", "Pick one curated subscription from one local farm.", Leaf],
               ["Farmers harvest fresh", "Orders close Wednesday night so farms can prep Thursday.", PackageCheck],
-              ["Delivered Friday", "Admin coordinates delivery manually for a reliable MVP operation.", Truck],
+              ["Delivered Friday", "Hurvest coordinates the Friday handoff so your box arrives on a predictable weekly rhythm.", Truck],
             ] as Array<[string, string, LucideIcon]>).map(([title, copy, Icon]) => (
               <Card key={String(title)}>
                 <CardContent className="p-6">
@@ -126,7 +126,7 @@ export default async function Home() {
           Choose a farm, subscribe once, and let Hurvest handle the weekly rhythm.
         </p>
         <Button asChild className="mt-8" size="lg">
-          <Link href="/farms">Browse Farm Boxes</Link>
+          <Link href="/farms">Browse farm boxes</Link>
         </Button>
       </section>
     </PageShell>

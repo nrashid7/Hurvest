@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { signInAction, signUpAction } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -9,7 +9,7 @@ export function SignInForm({ error, next = "/account" }: { error?: string; next?
   return (
     <Card className="mx-auto w-full max-w-md">
       <CardHeader>
-        <CardTitle className="text-3xl">Welcome back</CardTitle>
+        <h1 className="text-3xl font-bold tracking-normal">Welcome back</h1>
       </CardHeader>
       <CardContent>
         <form action={signInAction} className="grid gap-5">
@@ -37,7 +37,7 @@ export function SignUpForm({ error }: { error?: string }) {
   return (
     <Card className="mx-auto w-full max-w-md">
       <CardHeader>
-        <CardTitle className="text-3xl">Start your Friday box</CardTitle>
+        <h1 className="text-3xl font-bold tracking-normal">Start your Friday box</h1>
       </CardHeader>
       <CardContent>
         <form action={signUpAction} className="grid gap-5">

@@ -20,7 +20,7 @@ export default async function FarmsPage({ searchParams }: { searchParams: Promis
   return (
     <PageShell>
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <SectionHeading eyebrow="Farm boxes" title="Choose one farm box for Friday delivery.">
+        <SectionHeading eyebrow="Farm boxes" title="Choose one farm box for Friday delivery." level="h1">
           <p>No multi-vendor cart, no aisle sprawl. Pick the farm subscription that fits your household.</p>
         </SectionHeading>
         <div className="mt-8 flex flex-wrap gap-2">
@@ -39,4 +39,3 @@ export default async function FarmsPage({ searchParams }: { searchParams: Promis
     </PageShell>
   );
 }
-
