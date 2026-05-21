@@ -1,6 +1,8 @@
 # Hurvest
 
-Hurvest is a production-ready MVP for a Minnesota-first farm box subscription platform. It is intentionally subscription-first, curated-box-first, and simple enough for manual Friday delivery operations.
+Hurvest is a production-ready MVP for a Minnesota-first farm box subscription platform. It is intentionally subscription-first, curated-box-first, and simple enough for manual Friday delivery operations while still covering customer, farmer, and admin workflows.
+
+The app supports a paid beta launch model: farmers publish weekly boxes, customers subscribe through Stripe Checkout, admins generate delivery runs, and operations export CSVs for manual coordination.
 
 ## Stack
 
@@ -23,6 +25,8 @@ Without Supabase or Stripe credentials, the app runs in demo mode with realistic
 
 ## Environment Variables
 
+Start from `.env.example` and keep real values in `.env.local` or your deployment provider. The repo intentionally tracks only empty placeholders.
+
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
@@ -34,8 +38,10 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_SUPPORT_EMAIL=support@hurvest.local
 ```
 
-Never expose `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, or `STRIPE_WEBHOOK_SECRET` to the browser.
+Never expose `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, or `STRIPE_WEBHOOK_SECRET` to the browser or commit them to Git.
 Demo data is enabled automatically outside production when Supabase is not configured. In production, demo data is disabled unless `HURVEST_DEMO_MODE=true` is explicitly set.
+
+For the repository security policy and secret handling checklist, see `SECURITY.md`.
 
 ## Supabase Setup
 
@@ -94,7 +100,7 @@ npm run build
 
 ## Deployment
 
-Deploy to Vercel, add the environment variables, apply the Supabase migration, then configure the Stripe webhook to the production URL.
+Deploy to Vercel, add the environment variables, apply the Supabase migrations, then configure the Stripe webhook to the production URL.
 
 ## Launch Operations
 
