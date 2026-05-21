@@ -1,6 +1,7 @@
 {
   "name": "hurvest-app",
   "version": "0.1.0",
+  "description": "Minnesota-first farm box subscription MVP with Supabase operations and Stripe checkout.",
   "private": true,
   "scripts": {
     "dev": "next dev",
