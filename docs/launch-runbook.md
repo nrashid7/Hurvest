@@ -3,14 +3,8 @@
 ## Pre-Launch Setup
 
 - Apply every Supabase migration in timestamp order, including the order delivery idempotency migration.
-- Set production environment variables in Vercel:
-  - `NEXT_PUBLIC_SUPABASE_URL`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-  - `SUPABASE_SERVICE_ROLE_KEY`
-  - `NEXT_PUBLIC_APP_URL`
-  - `NEXT_PUBLIC_SUPPORT_EMAIL`
-  - Stripe keys and webhook secret once the Stripe account is ready.
-- Leave `HURVEST_DEMO_MODE` empty or set to `false` in production. Only set it to `true` for a deliberate demo deployment.
+- Set production environment values in Vercel for Supabase, Stripe, the app URL, and support contact once those accounts are ready.
+- Keep demo mode disabled in production unless this is a deliberate demo deployment.
 - Replace demo farms, boxes, prices, images, and capacity counts with real launch data.
 - Confirm launch delivery ZIPs in `src/lib/launch.ts`.
 

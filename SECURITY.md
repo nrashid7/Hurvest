@@ -4,15 +4,9 @@
 
 Hurvest is a public repository. Do not commit production, staging, or personal credentials.
 
-Keep real values in local environment files or the deployment provider's secret store. The repository should only contain `.env.example` with empty or clearly fake placeholders.
+Keep real values in local environment files or the deployment provider's secret store. The public repository should not contain environment files or credential placeholders.
 
-Never commit these values:
-
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- Supabase database passwords or connection strings
-- Personal access tokens, deploy tokens, private keys, or webhook signing secrets
+Never commit provider credentials, database passwords or connection strings, personal access tokens, deploy tokens, private keys, or webhook signing secrets.
 
 If a secret is committed, rotate it in the provider immediately, remove it from the repository, and review Git history before treating the incident as resolved.
 

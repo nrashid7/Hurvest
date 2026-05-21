@@ -15,7 +15,6 @@ The app supports a paid beta launch model: farmers publish weekly boxes, custome
 
 ```bash
 npm install
-cp .env.example .env.local
 npm run dev
 ```
 
@@ -25,28 +24,15 @@ Without Supabase or Stripe credentials, the app runs in demo mode with realistic
 
 ## Environment Variables
 
-Start from `.env.example` and keep real values in `.env.local` or your deployment provider. The repo intentionally tracks only empty placeholders.
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-HURVEST_DEMO_MODE=
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_SUPPORT_EMAIL=support@hurvest.local
-```
-
-Never expose `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, or `STRIPE_WEBHOOK_SECRET` to the browser or commit them to Git.
-Demo data is enabled automatically outside production when Supabase is not configured. In production, demo data is disabled unless `HURVEST_DEMO_MODE=true` is explicitly set.
+Keep real values in `.env.local` or your deployment provider. Do not paste production, staging, or personal credentials into the public repository or README.
+Demo data is enabled automatically outside production when Supabase is not configured. In production, demo data is disabled unless the demo override is explicitly enabled.
 
 For the repository security policy and secret handling checklist, see `SECURITY.md`.
 
 ## Supabase Setup
 
 1. Create a Supabase project.
-2. Copy `.env.example` to `.env.local` and fill in the Supabase URL and keys.
+2. Configure Supabase environment values locally or in your deployment provider.
 3. Apply every migration in `supabase/migrations` in timestamp order.
 4. Create users in Supabase Auth or through `/signup`. New auth users automatically receive a customer or farmer profile based on signup type.
 5. Promote demo operators from `/admin` or by updating matching rows in `profiles`:
@@ -60,7 +46,7 @@ The launch hardening migration also blocks customer role escalation, restricts c
 
 ## Stripe Setup
 
-1. Add `STRIPE_SECRET_KEY`.
+1. Add the Stripe server-side credentials in your local or deployment environment.
 2. Create a webhook endpoint pointing to:
 
 ```text
@@ -71,7 +57,7 @@ https://your-domain.com/api/stripe/webhook
    - `checkout.session.completed`
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
-4. Add the signing secret as `STRIPE_WEBHOOK_SECRET`.
+4. Add the webhook signing secret in your local or deployment environment.
 
 Checkout uses Stripe subscription mode with `user_id`, `box_id`, and `farm_id` metadata.
 
